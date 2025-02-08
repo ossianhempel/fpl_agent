@@ -1,5 +1,4 @@
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, MetaData, Engine
 import psycopg2
 import os
 from dataclasses import dataclass
@@ -8,6 +7,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 class DatabaseSchema:
     """Object that stores the database schema"""
+
     def __init__(self):
         pass
 
@@ -21,13 +21,16 @@ class DatabaseConfig:
     db_host: str = os.getenv("PG_HOST", "empty")
     gemini_key: str = os.getenv("GEMINI_API_KEY", "empty")
 
+
 class DatabaseManager:
     def __init__(self):
         self.config = DatabaseConfig()
         self.connection = None
         self.cursor = None
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+    @retry(
+        stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10)
+    )
     def _create_connection(self):
         self.connection = psycopg2.connect(
             database=self.config.db_name,
@@ -37,7 +40,7 @@ class DatabaseManager:
             port=self.config.db_port,
         )
         return self.connection
-    
+
     def _create_cursor(self):
         if self.cursor is None or self.cursor.closed:
             if not self.connection:
@@ -49,33 +52,36 @@ class DatabaseManager:
         """close all database connections"""
         if self.cursor:
             self.cursor.close()
-        
+
         if self.connection:
             self.connection.commit()
             self.connection.close()
-        
+
         self.cursor = None
         self.connection = None
-        
+
         print("Database connection closed")
-    
+
     def execute_query(self, query):
+        """Execute SQL query and return results"""
         if not self.cursor:
             self.cursor = self._create_cursor()
-        
-        self.cursor.execute(query)
-        result = self.cursor.fetchall()
 
-        return result
-
+        try:
+            self.cursor.execute(query)
+            results = self.cursor.fetchall()
+            return {"success": True, "data": results}
+        except Exception as e:
+            return {"success": False, "error": str(e)}
 
     def get_schema(self) -> None:
         if not self.connection:
             self.connection = self._create_connection()
-        
+
         with self.connection.cursor() as cur:
             # query to get schema information
-            cur.execute("""
+            cur.execute(
+                """
                 SELECT
                     table_name,
                     column_name,
@@ -83,7 +89,8 @@ class DatabaseManager:
                 FROM information_schema.columns
                 WHERE table_schema = 'dbt_ohempel'
                 ORDER BY table_name, ordinal_position;
-            """)
+            """
+            )
             current_table = None
             for table_name, column_name, data_type in cur.fetchall():
                 if table_name != current_table:
@@ -92,17 +99,14 @@ class DatabaseManager:
                 print(f" - {column_name}: {data_type}")
 
 
-
-
-
-
 if __name__ == "__main__":
     load_dotenv()
 
     db_manager = DatabaseManager()
     print("Executing query..")
-    
-    result = db_manager.execute_query("""
+
+    result = db_manager.execute_query(
+        """
         select * from dbt_ohempel.dim_teams LIMIT 10
         """
     )
