@@ -74,7 +74,7 @@ class DatabaseManager:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
-    def get_schema(self) -> None:
+    def get_raw_schema(self) -> list:
         if not self.connection:
             self.connection = self._create_connection()
 
@@ -91,12 +91,16 @@ class DatabaseManager:
                 ORDER BY table_name, ordinal_position;
             """
             )
+
             current_table = None
+            schema_data = []
             for table_name, column_name, data_type in cur.fetchall():
                 if table_name != current_table:
-                    print(f"\nTable: {table_name}")
+                    # print(f"\nTable: {table_name}")
                     current_table = table_name
-                print(f" - {column_name}: {data_type}")
+                # print(f" - {column_name}: {data_type}")
+                schema_data.append((table_name, column_name, data_type))
+            return schema_data
 
 
 if __name__ == "__main__":
@@ -113,6 +117,6 @@ if __name__ == "__main__":
 
     print(result)
 
-    db_manager.get_schema()
+    print(db_manager.get_raw_schema())
 
     db_manager.close()
