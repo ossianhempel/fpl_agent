@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt>
+The previous query resulted in an error. Please fix the following issues:
+{error_context}
+When generating the new query:
+1. Check table and column names
+2. Verify join conditions
+3. Validate syntax and semicolons
+4. Ensure proper quoting of string values
+</prompt>
